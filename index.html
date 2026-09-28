@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>奶方门诊 · 开方程序</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family: "Noto Serif SC", "Songti SC", serif;
+    background:#f5efe3;
+    color:#3d2b1f;
+    min-height:100vh;
+    padding:24px 16px 60px;
+  }
+  .wrap { max-width:520px; margin:0 auto; }
+  header { text-align:center; margin-bottom:28px; }
+  header h1 { font-size:30px; letter-spacing:10px; font-weight:700; }
+  header .sub { margin-top:8px; font-size:13px; letter-spacing:3px; color:#8a6d4b; }
+  .seal {
+    display:inline-block; margin-top:10px; padding:2px 8px;
+    border:2px solid #b03a2e; color:#b03a2e; font-size:12px; letter-spacing:2px;
+    border-radius:4px; transform:rotate(-3deg);
+  }
+  section { background:#fbf7ec; border:1px solid #e0d3b8; border-radius:10px; padding:18px 16px; margin-bottom:16px; }
+  section h2 { font-size:15px; letter-spacing:4px; margin-bottom:14px; color:#6b4f2e; }
+  section h2::before { content:"〡"; color:#b03a2e; margin-right:6px; }
+  .opts { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .opt {
+    border:1.5px solid #d8c9a6; border-radius:8px; padding:12px 8px; text-align:center;
+    font-size:15px; letter-spacing:2px; cursor:pointer; background:#fffdf6;
+    transition:all .15s; user-select:none;
+  }
+  .opt small { display:block; font-size:11px; color:#a08a64; margin-top:4px; letter-spacing:1px; }
+  .opt.on { border-color:#b03a2e; background:#b03a2e; color:#fff; }
+  .opt.on small { color:#f3d9c9; }
+  .slider-row { padding:6px 2px 0; }
+  input[type=range] { width:100%; accent-color:#b03a2e; height:28px; }
+  .ticks { display:flex; justify-content:space-between; font-size:11px; color:#a08a64; margin-top:4px; }
+  .slider-val { text-align:center; margin-top:8px; font-size:14px; letter-spacing:2px; color:#6b4f2e; min-height:20px; }
+  button.go {
+    width:100%; padding:16px; font-size:19px; letter-spacing:12px; font-family:inherit;
+    background:#3d2b1f; color:#f5efe3; border:none; border-radius:10px; cursor:pointer; margin-top:6px;
+  }
+  button.go:active { transform:scale(.98); }
+  /* 奶方卡 */
+  .card {
+    display:none; background:#fffdf6; border:1.5px solid #3d2b1f; border-radius:6px;
+    padding:22px 20px; margin-top:22px; position:relative;
+  }
+  .card::before { content:""; position:absolute; inset:5px; border:1px solid #c9b98f; border-radius:4px; pointer-events:none; }
+  .card h3 { text-align:center; font-size:20px; letter-spacing:8px; margin-bottom:4px; }
+  .card .no { text-align:center; font-size:12px; color:#a08a64; letter-spacing:2px; margin-bottom:14px; }
+  .card .req { font-size:13px; color:#6b4f2e; letter-spacing:1px; text-align:center; margin-bottom:16px; line-height:1.8; }
+  .ratio { margin-bottom:14px; }
+  .ratio .row { display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:14px; }
+  .ratio .name { width:78px; letter-spacing:1px; flex-shrink:0; }
+  .ratio .bar { flex:1; height:10px; background:#eee3c8; border-radius:5px; overflow:hidden; }
+  .ratio .fill { height:100%; background:#b03a2e; border-radius:5px; }
+  .ratio .pct { width:42px; text-align:right; font-variant-numeric:tabular-nums; }
+  .bean, .cup, .kcal { font-size:14px; margin:8px 0; letter-spacing:1px; }
+  .bean span, .cup span, .kcal span { color:#b03a2e; }
+  .why { border-top:1px dashed #c9b98f; margin-top:14px; padding-top:12px; font-size:13px; line-height:2; color:#5a4530; }
+  .sign { display:flex; justify-content:space-between; align-items:flex-end; margin-top:16px; font-size:13px; }
+  .sign .brand { font-size:11px; color:#a08a64; letter-spacing:1px; }
+  .stamp { border:2px solid #b03a2e; color:#b03a2e; padding:4px 10px; letter-spacing:3px; border-radius:4px; transform:rotate(-6deg); font-size:14px; }
+  .again { width:100%; margin-top:14px; padding:12px; background:none; border:1.5px solid #3d2b1f; border-radius:8px; font-family:inherit; font-size:14px; letter-spacing:4px; color:#3d2b1f; cursor:pointer; display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>奶方门诊</h1>
+    <div class="sub">咖岚 MILKLAB · 老中医抓药</div>
+    <div class="seal">对症开奶</div>
+  </header>
+
+  <section>
+    <h2>壹 · 风味趋向</h2>
+    <div class="opts" id="flavor">
+      <div class="opt" data-v="huaguo">花果香</div>
+      <div class="opt" data-v="redai">热带果</div>
+      <div class="opt" data-v="maixiang">麦香</div>
+      <div class="opt" data-v="jianguo">坚果可可</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>贰 · 口感</h2>
+    <div class="opts" id="texture">
+      <div class="opt" data-v="1">茶感轻盈</div>
+      <div class="opt" data-v="2">轻盈</div>
+      <div class="opt" data-v="3">透亮果汁</div>
+      <div class="opt" data-v="4">圆润果汁</div>
+      <div class="opt" data-v="5">奶质丝滑</div>
+      <div class="opt" data-v="6">奶油质地</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>叁 · 负担</h2>
+    <div class="opts" id="burden">
+      <div class="opt" data-v="low">低脂</div>
+      <div class="opt" data-v="normal">正常</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>肆 · 杯型</h2>
+    <div class="opts" id="cup">
+      <div class="opt" data-v="aobai">澳白</div>
+      <div class="opt" data-v="dirty">Dirty</div>
+    </div>
+  </section>
+
+  <button class="go" id="go">开 方</button>
+
+  <div class="card" id="card">
+    <h3>奶 方</h3>
+    <div class="no" id="no">No.001</div>
+    <div class="req" id="req"></div>
+    <div class="ratio" id="ratio"></div>
+    <div class="bean">配豆 · <span id="bean"></span></div>
+    <div class="cup">杯型 · <span id="cupOut"></span></div>
+    <div class="kcal">预估 · <span id="kcal"></span></div>
+    <div class="why" id="why"></div>
+    <div class="sign">
+      <div>
+        <div>医师 · Sammul</div>
+        <div class="brand">咖岚MILKLAB ｜ #MILKLAB #咖岚 #MILKLAB植物奶拉花</div>
+      </div>
+      <div class="stamp">奶方门诊</div>
+    </div>
+  </div>
+  <button class="again" id="again">再 开 一 方</button>
+</div>
+
+<script>
+const MILK_NAMES = { oat:'燕麦奶', almond:'扁桃仁奶', coconut:'椰奶', macadamia:'夏威夷果奶', soy:'豆奶' };
+const FLAVOR_NAMES = { huaguo:'花果香', redai:'热带果', maixiang:'麦香', jianguo:'坚果可可' };
+const BEAN_A = '埃塞SOE';
+const BEAN_B = '经典拼配';
+
+let flavor = null, cup = null, burden = null, tex = null, count = 0;
+
+function bindOpts(id, cb){
+  document.getElementById(id).addEventListener('click', e => {
+    const el = e.target.closest('.opt'); if(!el) return;
+    document.querySelectorAll('#'+id+' .opt').forEach(o => o.classList.remove('on'));
+    el.classList.add('on'); cb(el.dataset.v);
+  });
+}
+bindOpts('flavor', v => flavor = v);
+bindOpts('texture', v => tex = +v);
+bindOpts('burden', v => burden = v);
+bindOpts('cup', v => cup = v);
+
+const texWords = {1:'茶感轻盈',2:'轻盈',3:'透亮果汁',4:'圆润果汁',5:'奶质丝滑',6:'奶油质地'};
+const burWords = { low:'低脂', normal:'正常' };
+
+// ===== 开方引擎 v2 · 查表式梯子 =====
+// 每100ml营养（包装实测）
+const NUTRI = {
+  oat:      { kcal:58 },
+  almond:   { kcal:37 },
+  coconut:  { kcal:45 },
+  macadamia:{ kcal:30 },
+  soy:      { kcal:60 },
+};
+const BASE_ML = 180; // 每杯奶基估算量
+
+// 风味×口感 基础梯子（负担滑块中立时）
+const LADDER = {
+  huaguo: {
+    1:{almond:100},
+    2:{almond:90,coconut:10},
+    3:{almond:90,macadamia:10},
+    4:{almond:80,macadamia:20},
+    5:{almond:70,macadamia:20,coconut:10},
+    6:{almond:60,macadamia:30,coconut:10},
+  },
+  redai: {
+    1:{almond:90,coconut:10},
+    2:{almond:80,coconut:20},
+    3:{almond:70,coconut:20,macadamia:10},
+    4:{almond:65,coconut:20,macadamia:15},
+    5:{almond:60,coconut:20,macadamia:20},
+    6:{almond:55,coconut:20,macadamia:25},
+  },
+  maixiang: {
+    1:{oat:60,almond:40},
+    2:{oat:70,almond:30},
+    3:{oat:75,soy:25},
+    4:{oat:80,soy:20},
+    5:{oat:70,macadamia:10,soy:20},
+    6:{oat:65,macadamia:10,soy:25},
+  },
+  jianguo: {
+    1:{almond:70,oat:30},
+    2:{almond:70,oat:20,coconut:10},
+    3:{almond:60,oat:30,coconut:10},
+    4:{almond:65,macadamia:20,coconut:15},
+    5:{almond:60,macadamia:25,coconut:15},
+    6:{almond:60,macadamia:30,coconut:10},
+  },
+};
+
+// 低脂版本专用梯子（热带果/麦香/坚果可可独立配方；花果香走推导规则：椰奶清零）
+const LOW_LADDER = {
+  redai: {
+    1:{almond:95,coconut:5},
+    2:{almond:90,coconut:10},
+    3:{almond:85,coconut:5,macadamia:10},
+    4:{almond:80,coconut:5,macadamia:15},
+    5:{almond:70,coconut:10,macadamia:20},
+    6:{almond:65,coconut:10,macadamia:25},
+  },
+  maixiang: {
+    1:{oat:55,almond:45},
+    2:{oat:60,almond:40},
+    3:{oat:55,almond:25,macadamia:20},
+    4:{oat:60,almond:20,macadamia:20},
+    5:{oat:55,almond:10,soy:15,macadamia:20},
+    6:{oat:55,soy:15,macadamia:30},
+  },
+  jianguo: {
+    1:{almond:80,oat:20},
+    2:{almond:70,oat:30},
+    3:{almond:50,oat:40,macadamia:10},
+    4:{almond:50,oat:30,macadamia:20},
+    5:{almond:40,oat:30,macadamia:20,soy:10},
+    6:{almond:35,oat:35,macadamia:20,soy:10},
+  },
+};
+const MAC_LOW_LINE = '低脂不减醇厚：夏威夷果奶热量全场最低（30kcal/100ml），要醇厚不一定要胖。';
+const LOW_NOTE = {
+  redai: (r,t) => {
+    const arr = [];
+    if(t <= 4) arr.push('低脂：椰奶只用' + r.coconut + '%，克制用量保持低脂，还能提升一点热带水果感。');
+    else arr.push('低脂：口感饱满度上来，风味感知会稍降，椰奶加到' + r.coconut + '%，提升风味感受。');
+    if(r.macadamia > 0) arr.push(MAC_LOW_LINE);
+    return arr;
+  },
+  maixiang: (r,t) => {
+    const arr = [];
+    if(t <= 2) arr.push('低脂：扁桃仁奶加量——它热量低（37kcal/100ml），口感丝滑，增加饮品清新感。');
+    if(r.macadamia > 0) arr.push(MAC_LOW_LINE);
+    return arr;
+  },
+  jianguo: (r,t) => {
+    const arr = ['低脂：椰奶脂肪全场最高（3.7g/100ml，饱和脂肪3.4g），这方不用它。'];
+    if(r.macadamia > 0) arr.push(MAC_LOW_LINE);
+    return arr;
+  },
+};
+const BASE_MILK = { huaguo:'almond', redai:'almond', maixiang:'oat', jianguo:'almond' };
+const BEAN_OF = { huaguo:BEAN_A, redai:BEAN_A, maixiang:BEAN_B, jianguo:BEAN_B };
+
+const FLAVOR_WHY = {
+  huaguo:'花果香走轻盈路线：扁桃仁奶主导——它香气高，还带一丝花香，跟埃塞SOE是天生一对。',
+  redai:'热带感交给椰奶：它和埃塞SOE的酸一结合，热带水果感就出来了；但椰香太重会破坏平衡，常驻不过20%。',
+  maixiang:'麦香是燕麦奶的主场：谷物香不抢咖啡韵，燕麦打底。',
+  jianguo:'坚果可可线配经典拼配：坚果、巧克力调的豆子。',
+};
+const TEXTURE_WHY = {
+  huaguo:{1:'茶感轻盈：这一付只需一味君药，干净利落、不挂口。',
+    2:'轻盈：清透为主，风味感知要够亮。',
+    3:'透亮果汁：清透之上要一点沉感，像果汁。',
+    4:'圆润果汁：重量明显上来，花果香仍是主角。',
+    5:'奶质丝滑：厚度够，风味也要补齐，向牛奶的圆润靠。',
+    6:'奶油质地：这条线能走到的最厚。'},
+  redai:{1:'茶感轻盈：热带感点到为止。',
+    2:'轻盈：热带水果感立起来，口感仍然轻。',
+    3:'透亮果汁：果香之上添一分沉。',
+    4:'圆润果汁：重量上一档，热带感不减。',
+    5:'奶质丝滑：圆润厚实，风味依旧在线。',
+    6:'奶油质地：热带水果本身醇厚度不高，这条线的厚到这里是它的本性。'},
+  maixiang:{1:'茶感轻盈：麦香洗到最清爽。',
+    2:'轻盈：清爽一些，麦香依然挺。',
+    3:'透亮果汁：麦香干净爽口，尾韵不能苦。',
+    4:'圆润果汁：谷物感最足的一档。',
+    5:'奶质丝滑：醇厚与甜感都要。',
+    6:'奶油质地：这条线最厚，厚而回甘。'},
+  jianguo:{1:'茶感轻盈：坚果可可的轻装版。',
+    2:'轻盈：可可感立体，口感仍轻。',
+    3:'透亮果汁：顺滑带香，谷物打底。',
+    4:'圆润果汁：醇厚度上来，可可感顶住。',
+    5:'奶质丝滑：又厚又润，风味补齐。',
+    6:'奶油质地：这条线最厚，可可主线守到底。'},
+};
+
+// 每款奶在本风味线里的职责（写进每张奶方卡）
+const MILK_ROLE = {
+  huaguo:{
+    almond:'扁桃仁奶主导：口感清透，把花果香托起来。',
+    coconut:'椰奶：提一下风味感知，量小不抢戏。'},
+  redai:{
+    almond:'扁桃仁奶主导：口感清透，托住果香。',
+    coconut:'椰奶：与埃塞SOE的酸结合，这杯的热带水果感就靠它。'},
+  maixiang:{
+    oat:'燕麦奶：麦香的来源，这杯的骨架。',
+    almond:'扁桃仁奶：口感清爽，把麦香洗得更轻。',
+    soy:'豆奶：修缮燕麦尾韵的一点苦，增加甜感。'},
+  jianguo:{
+    almond:'扁桃仁奶主导：坚果调与经典拼配的巧克力调互相成就。',
+    oat:'燕麦奶：垫一层谷物底。',
+    coconut:'椰奶：少量椰奶让咖啡豆的可可风味变得香甜。',
+    soy:'豆奶：修缮余韵，增加甜感。'},
+};
+
+// 夏威夷果奶的职责话术（按添加量套词）
+function macLine(pct){
+  const word = pct <= 10 ? '果汁感' : pct <= 20 ? '圆润的果汁感' : '丝滑质地';
+  return '夏威夷果奶圆润丝滑，添加' + pct + '%能增加' + word + '。';
+}
+
+function prescribe(flavor, t, burden, cup){
+  let r = { oat:0, almond:0, coconut:0, macadamia:0, soy:0, ...LADDER[flavor][t] };
+  const base = BASE_MILK[flavor];
+  const bean = BEAN_OF[flavor];
+  // 低脂版本：热带果/麦香/坚果可可走独立低脂梯子；花果香走推导规则（椰奶清零，差额给扁桃仁）
+  let lowfat = [];
+  if(burden === 'low'){
+    if(LOW_LADDER[flavor]){
+      r = { oat:0, almond:0, coconut:0, macadamia:0, soy:0, ...LOW_LADDER[flavor][t] };
+      lowfat = LOW_NOTE[flavor](r, t);
+    } else {
+      if(r.coconut > 0){ r[base] += r.coconut; r.coconut = 0;
+        lowfat.push('低脂：椰奶脂肪全场最高（3.7g/100ml，饱和脂肪3.4g），这方不用它。'); }
+      if(r.macadamia > 0){ lowfat.push(MAC_LOW_LINE); }
+      if(lowfat.length === 0){ lowfat.push('低脂：这一方本就是全场最轻的组合，照方开出。'); }
+    }
+  }
+
+  const keys = Object.keys(r).filter(k => r[k] > 0).sort((a,b) => r[b] - r[a]);
+
+  // 开方思路：风味线 → 口感意图 → 每款奶的职责 → 低脂备注
+  const flavorWhy = FLAVOR_WHY[flavor];
+  let why = [flavorWhy, TEXTURE_WHY[flavor][t]];
+  keys.forEach(k => why.push(k === 'macadamia' ? macLine(r[k]) : MILK_ROLE[flavor][k]));
+  why = why.concat(lowfat);
+
+  // 奶基热量估算
+  const per100 = keys.reduce((s,k) => s + r[k] * NUTRI[k].kcal / 100, 0);
+  const kcal = Math.round(per100 * BASE_ML / 100);
+
+  return { r, keys, bean, why, kcal };
+}
+
+document.getElementById('go').addEventListener('click', () => {
+  if(!flavor || !tex || !burden || !cup){
+    alert('风味、口感、负担、杯型都点上，医师才好开方。');
+    return;
+  }
+  count++;
+  const { r, keys, bean, why, kcal } = prescribe(flavor, tex, burden, cup);
+
+  document.getElementById('no').textContent = 'No.' + String(count).padStart(3,'0');
+  document.getElementById('req').textContent =
+    '主诉 · ' + FLAVOR_NAMES[flavor] + ' ｜ ' + texWords[tex] + ' ｜ ' + burWords[burden];
+  document.getElementById('ratio').innerHTML = keys.map(k =>
+    `<div class="row"><div class="name">${MILK_NAMES[k]}</div><div class="bar"><div class="fill" style="width:${r[k]}%"></div></div><div class="pct">${r[k]}%</div></div>`
+  ).join('');
+  document.getElementById('bean').textContent = bean;
+  document.getElementById('cupOut').textContent = cup === 'dirty' ? 'Dirty（冷）' : '澳白（热）';
+  document.getElementById('kcal').textContent = '奶基约 ' + kcal + ' kcal（按180ml计）';
+  document.getElementById('why').innerHTML = '开方思路<br>' + why.map(w => '· ' + w).join('<br>');
+
+  document.getElementById('card').style.display = 'block';
+  document.getElementById('again').style.display = 'block';
+  document.getElementById('card').scrollIntoView({ behavior:'smooth' });
+
+  // 开方后清空已选项，方便下一位客人直接点选
+  document.querySelectorAll('.opt.on').forEach(o => o.classList.remove('on'));
+  flavor = tex = burden = cup = null;
+});
+
+document.getElementById('again').addEventListener('click', () => {
+  window.scrollTo({ top:0, behavior:'smooth' });
+});
+</script>
+</body>
+</html>
